@@ -15,6 +15,7 @@ namespace PowerBi.Converters
 
     public class MetadataConverter : Converter
     {
+        private readonly Encoding _encoding;
         public override Stream RawToVcs(Stream b)
         {
             var outputStream = new MemoryStream();
@@ -30,7 +31,14 @@ namespace PowerBi.Converters
             for (var i = 0; i < section1Length; i++)
             {
                 var size = (short)binaryReader.ReadByte();
-                var text = new string(binaryReader.ReadChars(size));
+                string text;
+                if (_encoding != null) {
+                    text = _encoding.GetString(binaryReader.ReadBytes(size));
+                }
+                else
+                {
+                    text = new string(binaryReader.ReadChars(size));
+                }
                 var size2 = (short)binaryReader.ReadByte();
                 var text2 = new string(binaryReader.ReadChars(size2));
                 section1.Add(new SectionEntry { Name = text, Key = Guid.Parse(text2)});
@@ -43,7 +51,15 @@ namespace PowerBi.Converters
                 var size = (short)binaryReader.ReadByte();
                 var text = new string(binaryReader.ReadChars(size));
                 var size2 = (short)binaryReader.ReadByte();
-                var text2 = new string(binaryReader.ReadChars(size2));
+                string text2;
+                if (_encoding != null)
+                {
+                    text2 = _encoding.GetString(binaryReader.ReadBytes(size2));
+                }
+                else
+                {
+                    text2 = new string(binaryReader.ReadChars(size2));
+                }
                 section2.Add(new SectionEntry { Name = text2, Key = Guid.Parse(text) });
             }
 
@@ -112,7 +128,7 @@ namespace PowerBi.Converters
 
             var outputStream = new MemoryStream();
             var binaryWriter = new BinaryWriter(outputStream);
-
+            //FIX: header can be {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
             binaryWriter.Write(new byte[] {0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
             binaryWriter.Write(section1.Count);
             foreach (var t in section1)
@@ -153,10 +169,13 @@ namespace PowerBi.Converters
                 return reader.ReadToEnd();
             }
         }
-
         public MetadataConverter(IFileSystem fileSystem) : base(fileSystem)
         {
             
+        }
+        public MetadataConverter(Encoding encoding, IFileSystem fileSystem) : base(fileSystem)
+        {
+            _encoding = encoding;
         }
     }
 }
